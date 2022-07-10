@@ -23,22 +23,28 @@ func main() {
 	RRSchedule(os.Stdout, processes, "Round-robin")
 }
 
-type Process struct {
-	ProcessID     int64
-	ArrivalTime   int64
-	BurstDuration int64
-	Priority      int64
-}
+type (
+	Process struct {
+		ProcessID     int64
+		ArrivalTime   int64
+		BurstDuration int64
+		Priority      int64
+	}
+	TimeSlice struct {
+		PID   int64
+		Start int64
+		Stop  int64
+	}
+)
 
 // FCFSSchedule example output
 // ----------------------------------------------
-//            First-come, first-serve
+// First-come, first-serve
 // ----------------------------------------------
 // Gantt schedule
-// +-----+---+---+----+
-// | PID | 1 | 2 |  3 |
-// | T   | 0 | 5 | 14 |
-// +-----+---+---+----+
+// |   1   |   2   |   3   |
+// 0       5       14      20
+//
 // Schedule table
 // +----+----------+-------+---------+---------+------------+------------+
 // | ID | PRIORITY | BURST | ARRIVAL |  WAIT   | TURNAROUND |    EXIT    |
@@ -58,13 +64,15 @@ func FCFSSchedule(w io.Writer, processes []Process, title string) {
 		lastCompletion  float64
 		waitingTime     int64
 		schedule        = make([][]string, len(processes))
-		gantt           = make([][]string, len(processes))
+		gantt           = make([]TimeSlice, 0)
 	)
 	for i := range processes {
 		if processes[i].ArrivalTime > 0 {
 			waitingTime = serviceTime - processes[i].ArrivalTime
 		}
 		totalWait += float64(waitingTime)
+
+		start := waitingTime + processes[i].ArrivalTime
 
 		turnaround := processes[i].BurstDuration + waitingTime
 		totalTurnaround += float64(turnaround)
@@ -81,12 +89,13 @@ func FCFSSchedule(w io.Writer, processes []Process, title string) {
 			fmt.Sprint(turnaround),
 			fmt.Sprint(completion),
 		}
-		gantt[i] = []string{
-			fmt.Sprint(processes[i].ProcessID),
-			fmt.Sprint(serviceTime),
-		}
-
 		serviceTime += processes[i].BurstDuration
+
+		gantt = append(gantt, TimeSlice{
+			PID:   processes[i].ProcessID,
+			Start: start,
+			Stop:  serviceTime,
+		})
 	}
 
 	count := float64(len(processes))
@@ -117,18 +126,22 @@ func outputTitle(w io.Writer, title string) {
 	_, _ = fmt.Fprintln(w, strings.Repeat("-", len(title)*2))
 }
 
-func outputGantt(w io.Writer, gantt [][]string) {
+func outputGantt(w io.Writer, gantt []TimeSlice) {
 	_, _ = fmt.Fprintln(w, "Gantt schedule")
-	table := tablewriter.NewWriter(w)
-	data := make([][]string, 2)
-	data[0] = []string{"PID"}
-	data[1] = []string{"T"}
+	_, _ = fmt.Fprint(w, "|")
 	for i := range gantt {
-		data[0] = append(data[0], gantt[i][0])
-		data[1] = append(data[1], gantt[i][1])
+		pid := fmt.Sprint(gantt[i].PID)
+		padding := strings.Repeat(" ", (8-len(pid))/2)
+		_, _ = fmt.Fprint(w, padding, pid, padding, "|")
 	}
-	table.AppendBulk(data)
-	table.Render()
+	_, _ = fmt.Fprintln(w)
+	for i := range gantt {
+		_, _ = fmt.Fprint(w, fmt.Sprint(gantt[i].Start), "\t")
+		if len(gantt)-1 == i {
+			_, _ = fmt.Fprint(w, fmt.Sprint(gantt[i].Stop))
+		}
+	}
+	_, _ = fmt.Fprintln(w, "\n")
 }
 
 func outputSchedule(w io.Writer, rows [][]string, wait, turnaround, throughput float64) {
