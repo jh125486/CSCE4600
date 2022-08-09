@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -12,15 +14,32 @@ import (
 )
 
 func main() {
-	processes := loadProcesses(os.Args)
+	// CLI args
+	if len(os.Args) != 2 {
+		log.Fatalf("%v: must give a scheduling file to process", ErrInvalidArgs)
+	}
+	// Read in CSV process CSV file
+	f, err := os.Open(os.Args[1])
+	if err != nil {
+		log.Fatalf("%v: error opening scheduling file", err)
+	}
+	defer func() {
+		_ = f.Close()
+	}()
+	// Load and parse processes
+	processes, err := loadProcesses(f)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	FCFSSchedule(os.Stdout, processes, "First-come, first-serve")
+	// First-come, first-serve scheduling
+	FCFSSchedule(os.Stdout, "First-come, first-serve", processes)
 
-	SJFSchedule(os.Stdout, processes, "Shortest-job-first")
-
-	SJFPrioritySchedule(os.Stdout, processes, "Priority")
-
-	RRSchedule(os.Stdout, processes, "Round-robin")
+	//SJFSchedule(os.Stdout, "Shortest-job-first", processes)
+	//
+	//SJFPrioritySchedule(os.Stdout, "Priority", processes)
+	//
+	//RRSchedule(os.Stdout, "Round-robin", processes)
 }
 
 type (
@@ -37,26 +56,13 @@ type (
 	}
 )
 
-// FCFSSchedule example output
-// ----------------------------------------------
-// First-come, first-serve
-// ----------------------------------------------
-// Gantt schedule
-// |   1   |   2   |   3   |
-// 0       5       14      20
-//
-// Schedule table
-// +----+----------+-------+---------+---------+------------+------------+
-// | ID | PRIORITY | BURST | ARRIVAL |  WAIT   | TURNAROUND |    EXIT    |
-// +----+----------+-------+---------+---------+------------+------------+
-// |  1 |        2 |     5 |       0 |       0 |          5 |          5 |
-// |  2 |        1 |     9 |       3 |       2 |         11 |         14 |
-// |  3 |        3 |     6 |       6 |       8 |         14 |         20 |
-// +----+----------+-------+---------+---------+------------+------------+
-// |                                   AVERAGE |  AVERAGE   | THROUGHPUT |
-// |                                    3.33   |   10.00    |   0.15/T   |
-// +----+----------+-------+---------+---------+------------+------------+
-func FCFSSchedule(w io.Writer, processes []Process, title string) {
+//region Schedulers
+
+// FCFSSchedule outputs a schedule of processes in a GANTT chart and a table of timing given:
+// • an output writer
+// • a title for the chart
+// • a slice of processes
+func FCFSSchedule(w io.Writer, title string, processes []Process) {
 	var (
 		serviceTime     int64
 		totalWait       float64
@@ -108,17 +114,15 @@ func FCFSSchedule(w io.Writer, processes []Process, title string) {
 	outputSchedule(w, schedule, aveWait, aveTurnaround, aveThroughput)
 }
 
-func SJFPrioritySchedule(w io.Writer, processes []Process, title string) {
+//func SJFPrioritySchedule(w io.Writer, title string, processes []Process) { }
+//
+//func SJFSchedule(w io.Writer, title string, processes []Process) { }
+//
+//func RRSchedule(w io.Writer, title string, processes []Process) { }
 
-}
+//endregion
 
-func SJFSchedule(w io.Writer, processes []Process, title string) {
-
-}
-
-func RRSchedule(w io.Writer, processes []Process, title string) {
-
-}
+//region Output helpers
 
 func outputTitle(w io.Writer, title string) {
 	_, _ = fmt.Fprintln(w, strings.Repeat("-", len(title)*2))
@@ -141,7 +145,7 @@ func outputGantt(w io.Writer, gantt []TimeSlice) {
 			_, _ = fmt.Fprint(w, fmt.Sprint(gantt[i].Stop))
 		}
 	}
-	_, _ = fmt.Fprintln(w, "\n")
+	_, _ = fmt.Fprintf(w, "\n\n")
 }
 
 func outputSchedule(w io.Writer, rows [][]string, wait, turnaround, throughput float64) {
@@ -156,19 +160,16 @@ func outputSchedule(w io.Writer, rows [][]string, wait, turnaround, throughput f
 	table.Render()
 }
 
-func loadProcesses(args []string) []Process {
-	if len(args) != 2 {
-		exitWithMsg("Must give a scheduling file")
-	}
+//endregion
 
-	f, err := os.Open(args[1])
-	if err != nil {
-		exitWithMsg("Must give a scheduling file")
-	}
+//region Loading processes.
 
-	rows, err := csv.NewReader(f).ReadAll()
+var ErrInvalidArgs = errors.New("invalid args")
+
+func loadProcesses(r io.Reader) ([]Process, error) {
+	rows, err := csv.NewReader(r).ReadAll()
 	if err != nil {
-		exitWithMsg(err.Error())
+		return nil, fmt.Errorf("%w: reading CSV", err)
 	}
 
 	processes := make([]Process, len(rows))
@@ -181,19 +182,17 @@ func loadProcesses(args []string) []Process {
 		}
 	}
 
-	return processes
-}
-
-func exitWithMsg(msg string) {
-	_, _ = fmt.Fprintln(os.Stderr, msg)
-	os.Exit(1)
+	return processes, nil
 }
 
 func mustStrToInt(s string) int64 {
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		exitWithMsg(err.Error())
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	return i
 }
+
+//endregion
