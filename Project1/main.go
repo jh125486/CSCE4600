@@ -15,17 +15,12 @@ import (
 
 func main() {
 	// CLI args
-	if len(os.Args) != 2 {
-		log.Fatalf("%v: must give a scheduling file to process", ErrInvalidArgs)
-	}
-	// Read in CSV process CSV file
-	f, err := os.Open(os.Args[1])
+	f, closeFile, err := openProcessingFile(os.Args...)
 	if err != nil {
-		log.Fatalf("%v: error opening scheduling file", err)
+		log.Fatal(err)
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer closeFile()
+
 	// Load and parse processes
 	processes, err := loadProcesses(f)
 	if err != nil {
@@ -40,6 +35,24 @@ func main() {
 	//SJFPrioritySchedule(os.Stdout, "Priority", processes)
 	//
 	//RRSchedule(os.Stdout, "Round-robin", processes)
+}
+
+func openProcessingFile(args ...string) (*os.File, func(), error) {
+	if len(args) != 2 {
+		return nil, nil, fmt.Errorf("%w: must give a scheduling file to process", ErrInvalidArgs)
+	}
+	// Read in CSV process CSV file
+	f, err := os.Open(args[1])
+	if err != nil {
+		return nil, nil, fmt.Errorf("%v: error opening scheduling file", err)
+	}
+	closeFn := func() {
+		if err := f.Close(); err != nil {
+			log.Fatalf("%v: error closing scheduling file", err)
+		}
+	}
+
+	return f, closeFn, nil
 }
 
 type (

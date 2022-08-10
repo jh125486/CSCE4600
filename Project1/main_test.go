@@ -134,3 +134,74 @@ func loadFixture(t *testing.T, p ...string) string {
 
 	return string(b)
 }
+
+func Test_openProcessingFile1(t *testing.T) {
+	tmpFile, tErr := os.CreateTemp(t.TempDir(), "")
+	if tErr != nil {
+		t.Fatal(tErr)
+	}
+
+	type args struct {
+		args []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *os.File
+		wantErr bool
+	}{
+		{
+			name: "success",
+			args: args{
+				args: []string{"binary_name", tmpFile.Name()},
+			},
+			want: tmpFile,
+		},
+		{
+			name: "not enough args",
+			args: args{
+				args: []string{"binary_name"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad file",
+			args: args{
+				args: []string{"binary_name", "bad_file_name"},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, closeFn, err := openProcessingFile(tt.args.args...)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("openProcessingFile() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil {
+				return
+			}
+
+			if got == nil {
+				t.Fatal("file is unexpectedly nil")
+			}
+			if closeFn == nil {
+				t.Fatal("closeFn is unexpectedly nil")
+			}
+			t.Cleanup(closeFn)
+
+			f1, err := os.Stat(got.Name())
+			if err != nil {
+				t.Fatalf("Could not stat file: %v", got)
+			}
+			f2, err := os.Stat(tt.want.Name())
+			if err != nil {
+				t.Fatalf("Could not stat file: %v", tt.want)
+			}
+
+			if !os.SameFile(f1, f2) {
+				t.Fatal("files are not the same")
+			}
+		})
+	}
+}
