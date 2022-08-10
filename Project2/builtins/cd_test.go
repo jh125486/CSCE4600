@@ -3,7 +3,6 @@ package builtins_test
 import (
 	"errors"
 	"github.com/jh125486/CSCE4600/Project2/builtins"
-	"io"
 	"os"
 	"testing"
 )
@@ -18,8 +17,8 @@ func TestChangeDirectory(t *testing.T) {
 		name         string
 		args         args
 		unsetHomedir bool
-		wantErr      error
 		wantDir      string
+		wantErr      error
 	}{
 		{
 			name: "error too many args",
@@ -35,7 +34,7 @@ func TestChangeDirectory(t *testing.T) {
 		{
 			name:         "no args should error if homedir is blank",
 			unsetHomedir: true,
-			wantErr:      io.EOF,
+			wantErr:      builtins.ErrInvalidArgCount,
 		},
 		{
 			name: "one arg should change to dir",
@@ -58,7 +57,7 @@ func TestChangeDirectory(t *testing.T) {
 
 			// testing
 			if err := builtins.ChangeDirectory(tt.args.args...); tt.wantErr != nil {
-				if errors.Is(tt.wantErr, err) {
+				if !errors.Is(err, tt.wantErr) {
 					t.Fatalf("ChangeDirectory() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				return

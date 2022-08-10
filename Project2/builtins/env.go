@@ -22,9 +22,8 @@ func EnvironmentVariables(w io.Writer, args ...string) error {
 	toShow := make([]string, 0)
 	for _, env := range os.Environ() {
 		show := true
-		name := strings.Split(env, "=")[0]
 		for _, v := range toRemove {
-			if v == name {
+			if strings.HasPrefix(env, v+"=") {
 				show = false
 				break
 			}
