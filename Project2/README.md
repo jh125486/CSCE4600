@@ -4,7 +4,7 @@
 
 For this project we'll be adding commands to a simple shell. 
 
-The shell is already written, but you will choose five (5) shell builtins (or shell-adjacent) commands to rewrite into Go, and integrated into the Go shell.
+The shell is already written, but you will choose five (5) shell builtins (or shell-adjacent) commands to rewrite into Go, and integrate into the Go shell.
 
 There are many builtins or shell-adjacent commands to pick from: 
 [Bourne Shell Builtins](https://www.gnu.org/software/bash/manual/html_node/Bourne-Shell-Builtins.html), 
