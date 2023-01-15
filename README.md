@@ -1,5 +1,7 @@
 # Project Files CSCE 4600
 
+[![golangci-lint](https://github.com/jh125486/CSCE4600/actions/workflows/golangci-lint.yml/badge.svg?branch=main)](https://github.com/jh125486/CSCE4600/actions/workflows/golangci-lint.yml)
+
 ## Operating Systems
 
 Concepts in operating system analysis and design. General topics of process, resource and file management are presented and analyzed in the context of different system architectures and performance constraints.
