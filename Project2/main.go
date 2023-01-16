@@ -13,40 +13,57 @@ import (
 )
 
 func main() {
-	u, err := user.Current()
-	if err != nil {
-		panic(err)
-	}
+	exit := make(chan struct{}, 2) // buffer this so there's no deadlock.
+	runLoop(os.Stdin, os.Stdout, os.Stderr, exit)
+}
 
+func runLoop(r io.Reader, w, errW io.Writer, exit chan struct{}) {
 	var (
 		input    string
-		readLoop = bufio.NewReader(os.Stdin)
+		err      error
+		readLoop = bufio.NewReader(r)
 	)
 	for {
-		if err := printPrompt(os.Stdout, u); err != nil {
-			panic(err)
-		}
-		if input, err = readLoop.ReadString('\n'); err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, err)
-		}
-		if err = handleInput(os.Stdout, input); err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, err)
+		select {
+		case <-exit:
+			_, _ = fmt.Fprintln(w, "exiting gracefully...")
+			return
+		default:
+			if err := printPrompt(w); err != nil {
+				_, _ = fmt.Fprintln(errW, err)
+				continue
+			}
+			if input, err = readLoop.ReadString('\n'); err != nil {
+				_, _ = fmt.Fprintln(errW, err)
+				continue
+			}
+			if err = handleInput(w, input, exit); err != nil {
+				_, _ = fmt.Fprintln(errW, err)
+			}
 		}
 	}
 }
 
-func printPrompt(w io.Writer, u *user.User) error {
+func printPrompt(w io.Writer) error {
+	// Get current user.
+	// Don't prematurely memoize this because it might change due to `su`?
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+	// Get current working directory.
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
+	// /home/User [Username] $
 	_, err = fmt.Fprintf(w, "%v [%v] $ ", wd, u.Username)
 
 	return err
 }
 
-func handleInput(w io.Writer, input string) error {
+func handleInput(w io.Writer, input string, exit chan<- struct{}) error {
 	// Remove trailing spaces.
 	input = strings.TrimSpace(input)
 
@@ -55,13 +72,15 @@ func handleInput(w io.Writer, input string) error {
 	name, args := args[0], args[1:]
 
 	// Check for built-in commands.
+	// New builtin commands should be added here. Eventually this should be refactored to its own func.
 	switch name {
 	case "cd":
 		return builtins.ChangeDirectory(args...)
 	case "env":
 		return builtins.EnvironmentVariables(w, args...)
 	case "exit":
-		os.Exit(0)
+		exit <- struct{}{}
+		return nil
 	}
 
 	return executeCommand(name, args...)
