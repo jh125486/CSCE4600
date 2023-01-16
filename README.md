@@ -8,7 +8,6 @@ Concepts in operating system analysis and design. General topics of process, res
 
 ## [Project 1: Process Scheduler](https://github.com/jh125486/CSCE4600/tree/main/Project1)
 
-### Learning Objective 
 
 You can't take an operating systems class without programming a process scheduler.  It's against the Geneva code or something.
 Design a program that implements several different CPU scheduling algorithms.
@@ -16,4 +15,4 @@ Design a program that implements several different CPU scheduling algorithms.
 
 ## [Project 2: Shell Builtins](https://github.com/jh125486/CSCE4600/tree/main/Project2)
 
-A twist on a classic "build your own shell". The shell is already written, but you will choose five (5) shell builtins (or shell-adjacent) commands to rewrite into Go, and integrate into the Go shell.
+A twist on a classic "build your own shell". The *very* basic shell is already written, but you will choose five (5) shell builtins (or shell-adjacent) commands to rewrite into Go, and integrate into the Go shell.
