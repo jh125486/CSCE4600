@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -28,10 +29,10 @@ func main() {
 	}
 
 	// First-come, first-serve scheduling
-	FCFSSchedule(os.Stdout, "First-come, first-serve", processes)
+	//FCFSSchedule(os.Stdout, "First-come, first-serve", processes)
 
-	//SJFSchedule(os.Stdout, "Shortest-job-first", processes)
-	//
+	SJFSchedule(os.Stdout, "Shortest-job-first", processes)
+
 	//SJFPrioritySchedule(os.Stdout, "Priority", processes)
 	//
 	//RRSchedule(os.Stdout, "Round-robin", processes)
@@ -128,9 +129,135 @@ func FCFSSchedule(w io.Writer, title string, processes []Process) {
 }
 
 //func SJFPrioritySchedule(w io.Writer, title string, processes []Process) { }
-//
-//func SJFSchedule(w io.Writer, title string, processes []Process) { }
-//
+
+func SJFSchedule(w io.Writer, title string, processes []Process) {
+	var (
+		n                = len(processes)
+		remainTime       = make([]int64, n)
+		t                int64
+		curIdx           int
+		gantt            = make([]TimeSlice, 0)
+		numsOfCompletion = 0
+		minRemainTime    = int64(math.MaxInt64)
+		isCheck          = false
+		waitingTimes     = make([]int64, n)
+		lastCompletion   int64
+		schedule         = make([][]string, len(processes))
+	)
+
+	for i := range processes {
+		remainTime[i] = processes[i].BurstDuration
+	}
+
+	// Process until all processes gets completed
+	for numsOfCompletion < n {
+		// Find process with minimum remaining time among the processes that arrives till the current time
+		for i := range processes {
+			if processes[i].ArrivalTime <= t && remainTime[i] < minRemainTime && remainTime[i] > 0 {
+				minRemainTime = remainTime[i]
+				curIdx = i
+				isCheck = true
+			}
+		}
+
+		if !isCheck {
+			t++
+			continue
+		}
+
+		gantt = appendGantt(gantt, processes, t, int64(curIdx))
+
+		// Reduce remaining time by one
+		remainTime[curIdx]--
+
+		// Update minimum
+		minRemainTime = remainTime[curIdx]
+		if minRemainTime == 0 {
+			minRemainTime = int64(math.MaxInt64)
+		}
+
+		// If a process gets completely executed
+		if remainTime[curIdx] == 0 {
+			// Increment complete
+			numsOfCompletion++
+			isCheck = false
+
+			//Find finish time of current process
+			stop := t + 1
+			gantt = setStop(gantt, stop)
+
+			// Calculate waiting time
+			waitingTimes[curIdx] = stop - processes[curIdx].BurstDuration - processes[curIdx].ArrivalTime
+			if waitingTimes[curIdx] < 0 {
+				waitingTimes[curIdx] = 0
+			}
+		}
+
+		// Increment time
+		t++
+	}
+
+	turnAroundTimes := findTurnAroundTimes(processes, waitingTimes)
+
+	for i := range processes {
+		completion := processes[i].BurstDuration + processes[i].ArrivalTime + waitingTimes[i]
+		if lastCompletion < completion {
+			lastCompletion = completion
+		}
+		schedule[i] = []string{
+			fmt.Sprint(processes[i].ProcessID),
+			fmt.Sprint(processes[i].Priority),
+			fmt.Sprint(processes[i].BurstDuration),
+			fmt.Sprint(processes[i].ArrivalTime),
+			fmt.Sprint(waitingTimes[i]),
+			fmt.Sprint(turnAroundTimes[i]),
+			fmt.Sprint(completion),
+		}
+	}
+
+	aveWait := float64(sum(waitingTimes)) / float64(n)
+	aveTurnaround := float64(sum(turnAroundTimes)) / float64(n)
+	aveThroughput := float64(n) / float64(lastCompletion)
+
+	outputTitle(w, title)
+	outputGantt(w, gantt)
+	outputSchedule(w, schedule, aveWait, aveTurnaround, aveThroughput)
+}
+
+func findTurnAroundTimes(processes []Process, waitingTimes []int64) []int64 {
+	turnAroundTimes := make([]int64, len(processes))
+	for i := range processes {
+		turnAroundTimes[i] = processes[i].BurstDuration + waitingTimes[i]
+	}
+	return turnAroundTimes
+}
+
+func appendGantt(gantt []TimeSlice, processes []Process, start int64, curIdx int64) []TimeSlice {
+	if len(gantt) == 0 || gantt[len(gantt)-1].PID != processes[curIdx].ProcessID {
+		timeSlice := TimeSlice{
+			PID:   processes[curIdx].ProcessID,
+			Start: start,
+		}
+		gantt = append(gantt, timeSlice)
+	}
+	return gantt
+}
+
+func setStop(gantt []TimeSlice, stop int64) []TimeSlice {
+	if len(gantt) > 0 {
+		gantt[len(gantt)-1].Stop = stop
+	}
+	return gantt
+}
+
+func sum(nums []int64) int64 {
+	var s int64
+	for _, n := range nums {
+		s += n
+	}
+	return s
+}
+
 //func RRSchedule(w io.Writer, title string, processes []Process) { }
 
 //endregion

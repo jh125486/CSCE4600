@@ -126,6 +126,70 @@ func Test_loadProcesses(t *testing.T) {
 	}
 }
 
+func TestSJFSchedule(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		processes []Process
+		title     string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantOut string
+	}{
+		{
+			name: "default",
+			args: args{
+				processes: []Process{
+					{
+						ProcessID:     1,
+						ArrivalTime:   2,
+						BurstDuration: 6,
+						Priority:      2,
+					},
+					{
+						ProcessID:     2,
+						ArrivalTime:   5,
+						BurstDuration: 2,
+						Priority:      1,
+					},
+					{
+						ProcessID:     3,
+						ArrivalTime:   1,
+						BurstDuration: 8,
+						Priority:      3,
+					},
+					{
+						ProcessID:     4,
+						ArrivalTime:   0,
+						BurstDuration: 3,
+						Priority:      4,
+					},
+					{
+						ProcessID:     5,
+						ArrivalTime:   4,
+						BurstDuration: 4,
+						Priority:      5,
+					},
+				},
+				title: "Shortest-job-first",
+			},
+			wantOut: loadFixture(t, "sjfs_test.txt"),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var w bytes.Buffer
+			SJFSchedule(&w, tt.args.title, tt.args.processes)
+			if got := w.String(); got != tt.wantOut {
+				t.Errorf("SJFSchedule() = %v, want %v", got, tt.wantOut)
+			}
+		})
+	}
+}
+
 func loadFixture(t *testing.T, p ...string) string {
 	b, err := os.ReadFile(path.Join(p...))
 	if err != nil {
