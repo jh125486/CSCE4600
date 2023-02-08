@@ -23,7 +23,7 @@ The scheduler will be written in [Go](https://go.dev/) (a skeleton main.go is in
 
    1. Every line in this file includes a record with comma separated fields.
 
-      1. The format for this record is the following: \<ProcessID>,\<Arrival Time>,\<Burst Duration>,\<Priority>.
+      1. The format for this record is the following: \<ProcessID>,\<Burst Duration>,\<Arrival Time>,\<Priority>.
 
    2. Not all fields are used by all scheduling algorithms. For example, for FCFS you only need the process IDs, arrival times, and burst durations.
 
