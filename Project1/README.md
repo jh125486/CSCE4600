@@ -19,7 +19,7 @@ The scheduler will be written in [Go](https://go.dev/) (a skeleton main.go is in
 
 2. Copy the `Project1` files to your own git project.
 
-3. The processes for your scheduling algorithms is read from a file as the first argument to your program.
+3. The processes for your scheduling algorithms are read from a file as the first argument to your program.
 
    1. Every line in this file includes a record with comma separated fields.
 
