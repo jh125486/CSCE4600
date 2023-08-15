@@ -18,8 +18,16 @@ The scheduler will be written in [Go](https://go.dev/) (a skeleton main.go is in
    1. `git clone https://github.com/jh125486/CSCE4600`
 
 2. Copy the `Project1` files to your own git project.
+    
+    1. In your `go.mod`, replace "jh125486" in the module line with your GitHub name, e.g.:
 
-3. The processes for your scheduling algorithms are read from a file as the first argument to your program.
+      - "module github.com/jh125486/CSCE4600" changes to "module github.com/CoolStudent123/CSCE4600"
+
+    2. In the `main.go`, replace "jh125486" in the imports with your package path, e.g.:
+
+      - "github.com/jh125486/CSCE4600/Project2/builtins" changes to "github.com/CoolStudent123/CSCE4600/Project2/builtins"
+
+4. The processes for your scheduling algorithms are read from a file as the first argument to your program.
 
    1. Every line in this file includes a record with comma separated fields.
 
@@ -29,23 +37,13 @@ The scheduler will be written in [Go](https://go.dev/) (a skeleton main.go is in
 
    3. All processes in your input files will be provided a unique process ID. The arrival times and burst durations are integers. Process priorities have a range of [1-50]; the lower this number, the higher the priority i.e. a process with priority=1 has a higher priority than a process with priority=2.
 
-4. Start editing the `main.go` and add the scheduling algorithms:
+5. Start editing the `main.go` and add the scheduling algorithms:
    1. Implement SJF (preemptive) and report average turnaround time, average waiting time, and average throughput.
 
    2. Implement SJF priority scheduling (preemptive) and report average turnaround time, average waiting time, and average throughput.
 
    3. Round-round (preemptive) and report average turnaround time, average waiting time, and average throughput.
 
-## Grading
-
-Code must compile and run.
-
-Each type is worth different points:
-
-- 30 points for implementing FCFS (already done, so you get 30 points for just submitting)
-- 25 points for implementing SJF [preemptive]
-- 25 points for implementing SJF Priority scheduling [preemptive]
-- 20 points for implementing RR [always preemptive]
 
 ## Deliverables
 
