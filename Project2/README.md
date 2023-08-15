@@ -26,21 +26,12 @@ As an example, two shell builtins have already been added to the package builtin
  
 2. Copy the `Project2` files to your own git project.
 
-Start editing the `main.go` command switch (lines 57-64) and the package `builtins` with your chosen commands.
+    1. In your `go.mod`, replace "jh125486" in the module line with your GitHub name, e.g.:
 
-## Grading
+      - "module github.com/jh125486/CSCE4600" changes to "module github.com/CoolStudent123/CSCE4600"
+  
+    2. In the `main.go`, replace "jh125486" in the imports with your package path, e.g.:
 
-Code must compile and run.
+      - "github.com/jh125486/CSCE4600/Project2/builtins" changes to "github.com/CoolStudent123/CSCE4600/Project2/builtins"
 
-Each type is worth different points:
-
-- 10 points for each command implemented.
-- 50 peer points (points per peer adjusted for group size)
-
-## Deliverables
-
-A GitHub link to your project which includes:
-
-- `README.md` <- describes anything needed to build (optional)
-- `main.go` <- your shell
-- `builtins package` <- each command should have it's own file (for readability)
+3. Start editing the `main.go` command switch (lines 57-64) and the package `builtins` with your chosen commands.
