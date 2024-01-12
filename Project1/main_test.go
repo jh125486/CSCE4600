@@ -48,7 +48,7 @@ func TestFCFSSchedule(t *testing.T) {
 				},
 				title: "First-come, First-serve",
 			},
-			wantOut: loadFixture(t, "fcfs_test.txt"),
+			wantOut: loadFixture(t, "fcfs_fixture.txt"),
 		},
 	}
 	for _, tt := range tests {
@@ -85,7 +85,8 @@ func Test_loadProcesses(t *testing.T) {
 		{
 			name: "success",
 			args: args{
-				r: strings.NewReader(`1,5,0,2
+				r: strings.NewReader(`ProcessID,Burst Duration,Arrival Time,Priority
+1,5,0,2
 2,9,3,1
 3,6,3,3`),
 			},

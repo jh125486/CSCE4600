@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -14,27 +15,98 @@ import (
 )
 
 func main() {
-	// CLI args
-	f, closeFile, err := openProcessingFile(os.Args...)
+	// parse args.
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	scheduler, data, err := parseCLI(flagSet, os.Args[1:])
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stdout, err)
+		flagSet.PrintDefaults()
+		os.Exit(1)
+	}
+
+	// Load and parse processes.
+	processes, err := loadProcesses(data)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer closeFile()
 
-	// Load and parse processes
-	processes, err := loadProcesses(f)
+	// Run the given scheduler.
+	switch scheduler {
+	case fcfs:
+		FCFSSchedule(os.Stdout, "First-come, first-serve", processes)
+	case sjf:
+		SJFSchedule(os.Stdout, "Shortest-job-first", processes)
+	case sjfp:
+		SJFPrioritySchedule(os.Stdout, "Priority", processes)
+	case rr:
+		RRSchedule(os.Stdout, "Round-robin", processes)
+	}
+}
+
+//go:generate stringer -type=Scheduler
+type Scheduler uint
+
+const (
+	fcfs Scheduler = iota + 1
+	sjf
+	sjfp
+	rr
+)
+
+func parseCLI(flagSet *flag.FlagSet, args []string) (cmd Scheduler, data io.Reader, err error) {
+	fcfsFlag := flagSet.Bool(fcfs.String(), false, "First-come, first-serve scheduling")
+	sjfFlag := flagSet.Bool(sjf.String(), false, "Shortest-job-first scheduling")
+	sjfpFlag := flagSet.Bool(sjfp.String(), false, "Shortest-job-first with priority scheduling")
+	rrFlag := flagSet.Bool(rr.String(), false, "Round-robin scheduling")
+	if err := flagSet.Parse(args); err != nil {
+		return 0, nil, err
+	}
+	// validate only one flag is set
+	var count int
+	if *fcfsFlag {
+		count++
+		cmd = fcfs
+	}
+	if *sjfFlag {
+		count++
+		cmd = sjf
+	}
+	if *sjfpFlag {
+		count++
+		cmd = sjfp
+	}
+	if *rrFlag {
+		count++
+		cmd = rr
+	}
+	switch count {
+	case 0:
+		return 0, nil, fmt.Errorf("one scheduler flag must be set")
+	case 1:
+		// validate that data file is piped in.
+		if data, err := readData(os.Args[:2]); err != nil {
+			return 0, nil, err
+		} else {
+			return cmd, data, nil
+		}
+	default:
+		return 0, nil, fmt.Errorf("only one scheduler flag must be set")
+	}
+}
+
+func readData(args []string) (io.Reader, error) {
+	fi, _ := os.Stdin.Stat()
+	if (fi.Mode() & os.ModeCharDevice) == 0 {
+		return os.Stdin, nil
+	} else if len(args) == 1 {
+		return nil, fmt.Errorf("scheduler data must be passed in or file given as last argument")
+	}
+	r, err := os.Open(os.Args[2])
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("%w: error opening data file", err)
 	}
 
-	// First-come, first-serve scheduling
-	FCFSSchedule(os.Stdout, "First-come, first-serve", processes)
-
-	//SJFSchedule(os.Stdout, "Shortest-job-first", processes)
-	//
-	//SJFPrioritySchedule(os.Stdout, "Priority", processes)
-	//
-	//RRSchedule(os.Stdout, "Round-robin", processes)
+	return r, nil
 }
 
 func openProcessingFile(args ...string) (*os.File, func(), error) {
@@ -54,86 +126,6 @@ func openProcessingFile(args ...string) (*os.File, func(), error) {
 
 	return f, closeFn, nil
 }
-
-type (
-	Process struct {
-		ProcessID     int64
-		ArrivalTime   int64
-		BurstDuration int64
-		Priority      int64
-	}
-	TimeSlice struct {
-		PID   int64
-		Start int64
-		Stop  int64
-	}
-)
-
-//region Schedulers
-
-// FCFSSchedule outputs a schedule of processes in a GANTT chart and a table of timing given:
-// • an output writer
-// • a title for the chart
-// • a slice of processes
-func FCFSSchedule(w io.Writer, title string, processes []Process) {
-	var (
-		serviceTime     int64
-		totalWait       float64
-		totalTurnaround float64
-		lastCompletion  float64
-		waitingTime     int64
-		schedule        = make([][]string, len(processes))
-		gantt           = make([]TimeSlice, 0)
-	)
-	for i := range processes {
-		if processes[i].ArrivalTime > 0 {
-			waitingTime = serviceTime - processes[i].ArrivalTime
-		}
-		totalWait += float64(waitingTime)
-
-		start := waitingTime + processes[i].ArrivalTime
-
-		turnaround := processes[i].BurstDuration + waitingTime
-		totalTurnaround += float64(turnaround)
-
-		completion := processes[i].BurstDuration + processes[i].ArrivalTime + waitingTime
-		lastCompletion = float64(completion)
-
-		schedule[i] = []string{
-			fmt.Sprint(processes[i].ProcessID),
-			fmt.Sprint(processes[i].Priority),
-			fmt.Sprint(processes[i].BurstDuration),
-			fmt.Sprint(processes[i].ArrivalTime),
-			fmt.Sprint(waitingTime),
-			fmt.Sprint(turnaround),
-			fmt.Sprint(completion),
-		}
-		serviceTime += processes[i].BurstDuration
-
-		gantt = append(gantt, TimeSlice{
-			PID:   processes[i].ProcessID,
-			Start: start,
-			Stop:  serviceTime,
-		})
-	}
-
-	count := float64(len(processes))
-	aveWait := totalWait / count
-	aveTurnaround := totalTurnaround / count
-	aveThroughput := count / lastCompletion
-
-	outputTitle(w, title)
-	outputGantt(w, gantt)
-	outputSchedule(w, schedule, aveWait, aveTurnaround, aveThroughput)
-}
-
-//func SJFPrioritySchedule(w io.Writer, title string, processes []Process) { }
-//
-//func SJFSchedule(w io.Writer, title string, processes []Process) { }
-//
-//func RRSchedule(w io.Writer, title string, processes []Process) { }
-
-//endregion
 
 //region Output helpers
 
@@ -166,11 +158,11 @@ func outputSchedule(w io.Writer, rows [][]string, wait, turnaround, throughput f
 	table := tablewriter.NewWriter(w)
 	table.SetHeader([]string{"ID", "Priority", "Burst", "Arrival", "Wait", "Turnaround", "Exit"})
 	table.AppendBulk(rows)
-	table.SetFooter([]string{"", "", "", "",
-		fmt.Sprintf("Average\n%.2f", wait),
-		fmt.Sprintf("Average\n%.2f", turnaround),
-		fmt.Sprintf("Throughput\n%.2f/t", throughput)})
 	table.Render()
+	_, _ = fmt.Fprintln(w)
+	_, _ = fmt.Fprintf(w, "Average wait: %.2f\n", wait)
+	_, _ = fmt.Fprintf(w, "Average turnaround: %.2f\n", turnaround)
+	_, _ = fmt.Fprintf(w, "Throughput: %.2f\n", throughput)
 }
 
 //endregion
@@ -184,7 +176,7 @@ func loadProcesses(r io.Reader) ([]Process, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: reading CSV", err)
 	}
-
+	rows = rows[1:] // skip header row
 	processes := make([]Process, len(rows))
 	for i := range rows {
 		processes[i].ProcessID = mustStrToInt(rows[i][0])
@@ -201,10 +193,8 @@ func loadProcesses(r io.Reader) ([]Process, error) {
 func mustStrToInt(s string) int64 {
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		log.Fatalln(err)
 	}
-
 	return i
 }
 
