@@ -147,7 +147,7 @@ func outputGantt(w io.Writer, gantt []TimeSlice) {
 	}
 
 	_, _ = fmt.Fprintf(w, "|")
-	last := int64(0)
+	last := gantt[0].Start
 	for _, slice := range gantt {
 		_, _ = fmt.Fprint(w, strings.Repeat(" ", buffer))
 		if slice.Start > last {
