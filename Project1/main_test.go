@@ -6,10 +6,11 @@ import (
 	"io"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 	"testing"
 	"testing/iotest"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestFCFSSchedule(t *testing.T) {
@@ -28,25 +29,25 @@ func TestFCFSSchedule(t *testing.T) {
 			args: args{
 				processes: []Process{
 					{
-						ProcessID:     1,
+						ProcessID:     "P0",
 						ArrivalTime:   0,
 						BurstDuration: 5,
 						Priority:      2,
 					},
 					{
-						ProcessID:     2,
+						ProcessID:     "P1",
 						ArrivalTime:   3,
 						BurstDuration: 9,
 						Priority:      1,
 					},
 					{
-						ProcessID:     3,
+						ProcessID:     "P2",
 						ArrivalTime:   6,
 						BurstDuration: 6,
 						Priority:      3,
 					},
 				},
-				title: "First-come, First-serve",
+				title: "First-come, first-serve",
 			},
 			wantOut: loadFixture(t, "fcfs_fixture.txt"),
 		},
@@ -57,8 +58,8 @@ func TestFCFSSchedule(t *testing.T) {
 			t.Parallel()
 			var w bytes.Buffer
 			FCFSSchedule(&w, tt.args.title, tt.args.processes)
-			if got := w.String(); got != tt.wantOut {
-				t.Errorf("FCFSSchedule() = %v, want %v", got, tt.wantOut)
+			if diff := cmp.Diff(w.String(), tt.wantOut); diff != "" {
+				t.Errorf(diff)
 			}
 		})
 	}
@@ -86,25 +87,25 @@ func Test_loadProcesses(t *testing.T) {
 			name: "success",
 			args: args{
 				r: strings.NewReader(`ProcessID,Burst Duration,Arrival Time,Priority
-1,5,0,2
-2,9,3,1
-3,6,3,3`),
+P0,5,0,2
+P1,9,3,1
+P2,6,3,3`),
 			},
 			want: []Process{
 				{
-					ProcessID:     1,
+					ProcessID:     "P0",
 					ArrivalTime:   0,
 					BurstDuration: 5,
 					Priority:      2,
 				},
 				{
-					ProcessID:     2,
+					ProcessID:     "P1",
 					ArrivalTime:   3,
 					BurstDuration: 9,
 					Priority:      1,
 				},
 				{
-					ProcessID:     3,
+					ProcessID:     "P2",
 					ArrivalTime:   3,
 					BurstDuration: 6,
 					Priority:      3,
@@ -117,8 +118,8 @@ func Test_loadProcesses(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := loadProcesses(tt.args.r)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("loadProcesses() = %v, want %v", got, tt.want)
+			if diff := cmp.Diff(got, tt.want); diff != "" {
+				t.Errorf(diff)
 			}
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("error = %v, want %v", err, tt.wantErr)

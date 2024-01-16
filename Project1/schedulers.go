@@ -7,13 +7,13 @@ import (
 
 type (
 	Process struct {
-		ProcessID     int64
+		ProcessID     string
 		ArrivalTime   int64
 		BurstDuration int64
 		Priority      int64
 	}
 	TimeSlice struct {
-		PID   int64
+		PID   string
 		Start int64
 		Stop  int64
 	}

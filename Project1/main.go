@@ -137,19 +137,38 @@ func outputTitle(w io.Writer, title string) {
 
 func outputGantt(w io.Writer, gantt []TimeSlice) {
 	_, _ = fmt.Fprintln(w, "Gantt schedule")
-	_, _ = fmt.Fprint(w, "|")
-	for i := range gantt {
-		pid := fmt.Sprint(gantt[i].PID)
-		padding := strings.Repeat(" ", (8-len(pid))/2)
-		_, _ = fmt.Fprint(w, padding, pid, padding, "|")
-	}
-	_, _ = fmt.Fprintln(w)
-	for i := range gantt {
-		_, _ = fmt.Fprint(w, fmt.Sprint(gantt[i].Start), "\t")
-		if len(gantt)-1 == i {
-			_, _ = fmt.Fprint(w, fmt.Sprint(gantt[i].Stop))
+
+	buffer := 2
+	widest := 0
+	for _, slice := range gantt {
+		if len(slice.PID) > widest {
+			widest = len(slice.PID)
 		}
 	}
+
+	_, _ = fmt.Fprintf(w, "|")
+	last := int64(0)
+	for _, slice := range gantt {
+		_, _ = fmt.Fprint(w, strings.Repeat(" ", buffer))
+		if slice.Start > last {
+			_, _ = fmt.Fprint(w, strings.Repeat(" ", widest))
+		} else {
+			_, _ = fmt.Fprint(w, slice.PID)
+		}
+		_, _ = fmt.Fprint(w, strings.Repeat(" ", buffer)+"|")
+		last = slice.Stop
+	}
+	_, _ = fmt.Fprintf(w, "\n")
+	width := buffer + widest + buffer + 1
+	for i := range gantt {
+		t := fmt.Sprint(gantt[i].Start)
+		_, _ = fmt.Fprint(w, t)
+		_, _ = fmt.Fprint(w, strings.Repeat(" ", width-len(t)))
+		if i == len(gantt)-1 {
+			_, _ = fmt.Fprint(w, gantt[i].Stop)
+		}
+	}
+
 	_, _ = fmt.Fprintf(w, "\n\n")
 }
 
@@ -179,7 +198,7 @@ func loadProcesses(r io.Reader) ([]Process, error) {
 	rows = rows[1:] // skip header row
 	processes := make([]Process, len(rows))
 	for i := range rows {
-		processes[i].ProcessID = mustStrToInt(rows[i][0])
+		processes[i].ProcessID = rows[i][0]
 		processes[i].BurstDuration = mustStrToInt(rows[i][1])
 		processes[i].ArrivalTime = mustStrToInt(rows[i][2])
 		if len(rows[i]) == 4 {
