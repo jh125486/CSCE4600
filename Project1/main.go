@@ -146,6 +146,16 @@ func outputGantt(w io.Writer, gantt []TimeSlice) {
 		}
 	}
 
+	// fill in empty time slices in the gantt.
+	for i := 1; i < len(gantt); i++ {
+		if gantt[i].Start > gantt[i-1].Stop {
+			gantt = append(gantt[:i], append([]TimeSlice{{
+				PID: "-", Start: gantt[i-1].Stop, Stop: gantt[i].Start,
+			}}, gantt[i:]...)...)
+			i++
+		}
+	}
+
 	_, _ = fmt.Fprintf(w, "|")
 	last := gantt[0].Start
 	for _, slice := range gantt {

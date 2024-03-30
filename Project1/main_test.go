@@ -207,3 +207,60 @@ func Test_openProcessingFile1(t *testing.T) {
 		})
 	}
 }
+
+func Test_outputGantt(t *testing.T) {
+	t.Parallel()
+	type args struct {
+		gantt []TimeSlice
+	}
+	tests := []struct {
+		name  string
+		args  args
+		wantW string
+	}{
+		{
+			name: "consecutive processes",
+			args: args{
+				gantt: []TimeSlice{
+					{PID: "A", Start: 1, Stop: 2},
+					{PID: "B", Start: 2, Stop: 4},
+					{PID: "C", Start: 4, Stop: 7},
+					{PID: "D", Start: 7, Stop: 11},
+					{PID: "E", Start: 11, Stop: 16},
+				},
+			},
+			wantW: `Gantt schedule
+|  A  |  B  |  C  |  D  |  E  |
+1     2     4     7     11    16
+
+`,
+		},
+		{
+			name: "nonconsecutive processes",
+			args: args{
+				gantt: []TimeSlice{
+					{PID: "A", Start: 1, Stop: 2},
+					{PID: "B", Start: 5, Stop: 6},
+					{PID: "C", Start: 6, Stop: 7},
+					{PID: "D", Start: 9, Stop: 11},
+					{PID: "E", Start: 13, Stop: 16},
+				},
+			},
+			wantW: `Gantt schedule
+|  A  |  -  |  B  |  C  |  -  |  D  |  -  |  E  |
+1     2     5     6     7     9     11    13    16
+
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			w := &bytes.Buffer{}
+			outputGantt(w, tt.args.gantt)
+			if diff := cmp.Diff(tt.wantW, w.String()); diff != "" {
+				t.Errorf(diff)
+			}
+		})
+	}
+}
