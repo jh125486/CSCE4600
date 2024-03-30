@@ -20,7 +20,8 @@ jobs:
           fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository.
 
       - name: Setup go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
+          go-version-file: ./go.mod
 
       - uses: actions/cache@v3
         with:
